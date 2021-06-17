@@ -70,6 +70,11 @@ func startIndex() int {
 	dir, err := os.UserHomeDir()
 	errNLogger(err)
 	path := dir + "/xkcd-go-comics/index.txt"
+	if !fileExists(path){
+		file = os.Create(path)
+		file.WriteString(1)
+		file.Close()
+	}
 	file, err := os.Open(path)
 	errNLogger(err)
 	scanner := bufio.NewScanner(file)
