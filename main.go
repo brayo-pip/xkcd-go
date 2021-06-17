@@ -70,10 +70,10 @@ func startIndex() int {
 	dir, err := os.UserHomeDir()
 	errNLogger(err)
 	path := dir + "/xkcd-go-comics/index.txt"
-	if !fileExists(path){
+	if fileExists(path)==false{
 		file , err := os.Create(path)
 		errNLogger(err)
-		file.WriteString(1)
+		file.WriteString("1")
 		file.Close()
 	}
 	file, err := os.Open(path)
