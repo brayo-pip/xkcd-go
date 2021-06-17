@@ -69,7 +69,7 @@ func main() {
 func startIndex() int {
 	dir, err := os.UserHomeDir()
 	errNLogger(err)
-	path := dir + "\\xkcd-go-comics\\index.txt"
+	path := dir + "/xkcd-go-comics/index.txt"
 	file, err := os.Open(path)
 	errNLogger(err)
 	scanner := bufio.NewScanner(file)
@@ -138,7 +138,7 @@ func downloadComic(x int, client *http.Client, done chan int, spawns *sync.WaitG
 	// fmt.Println(imgRes.StatusCode)
 	homedir, err := os.UserHomeDir()
 	errNLogger(err)
-	path := homedir + "\\xkcd-go-comics\\" + name
+	path := homedir + "/xkcd-go-comics/" + name
 	if fileExists(path) {
 		done <- x
 	} else {
@@ -202,7 +202,7 @@ func checkName(name string) bool {
 func updateSkipFile(num int) bool {
 	dir, err := os.UserHomeDir()
 	errNLogger(err)
-	path := dir + "\\xkcd-go-comics\\index.txt"
+	path := dir + "/xkcd-go-comics/index.txt"
 	file, err := os.Open(path)
 	defer file.Close()
 	errNLogger(err)
@@ -240,7 +240,7 @@ func offlineTest(i int, done chan int, spawns *sync.WaitGroup) {
 func wipeFileTest() {
 	dir, err := os.UserHomeDir()
 	errNLogger(err)
-	path := dir + "\\xkcd-go-comics\\index.txt"
+	path := dir + "/xkcd-go-comics/index.txt"
 	file, err := os.Create(path)
 	defer file.Close()
 	file.WriteString(strconv.Itoa(1))
