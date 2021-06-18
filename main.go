@@ -70,7 +70,9 @@ func startIndex() int {
 	dir, err := os.UserHomeDir()
 	errNLogger(err)
 	path := dir + "/xkcd-go-comics/index.txt"
-	if fileExists(path)==false{
+	if !fileExists(path){
+		err := os.MkdirAll(dir+"/xkcd-go-comics",os.ModeAppend)
+		errNLogger(err)
 		file , err := os.Create(path)
 		errNLogger(err)
 		file.WriteString("1")
