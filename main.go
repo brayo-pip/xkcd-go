@@ -63,7 +63,7 @@ func main() {
 	close(indexChannel)
 	chillspot.Wait()
 	fmt.Println(startIndex())
-	fmt.Printf("took %v", time.Since(startTime))
+	fmt.Printf("took %v\n", time.Since(startTime))
 
 }
 func startIndex() int {
