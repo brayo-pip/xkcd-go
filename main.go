@@ -12,7 +12,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -24,54 +23,52 @@ func main() {
 	}
 	// wipeFileTest()
 	startTime := time.Now()
-	var chillspot, spawns sync.WaitGroup
-	indexChannel := make(chan int)
+	indexChannel := make(chan int, 10)
+	done := make(chan int)
 
 	start := startIndex()
 	end := endIndex()
-	// allComics := end - start
-
-	chillspot.Add(1)
-	go func(indexChannel chan int) {
-		index := 0
-		granuality := 32
-		for v := range indexChannel {
-			if v%granuality == 0 {
-				updateSkipFile(v)
-				// fmt.Printf("value of v is %v \n", v)
+	granuality := 32
+	go func(indexChannel chan int, done chan int) {
+		if end-start > granuality {
+			for i := start; i < start+granuality; i++ {
+				go downloadComic(i, &client, indexChannel)
 			}
-			index++
+			for i := start + granuality; i <= end; i++ {
+				v := <-indexChannel
+				if v%32 == 0 {
+					updateSkipFile(v)
+				}
+				if skipComic(i) {
+					go offlineTest(i, indexChannel)
+					continue
+				}
+				go downloadComic(i, &client, indexChannel)
+			}
+		} else {
+			for i := start; i <= end; i++ {
+				if skipComic(i) {
+					continue
+				}
+				go downloadComic(i, &client, indexChannel)
+			}
+			updateSkipFile(end)
 		}
-		defer chillspot.Done()
-	}(indexChannel)
 
-	spawned := 0
-	spawnLimit := 10
-	for i := start; i <= end; i++ {
-		if skipComic(i) {
-			continue
-		}
-		spawns.Add(1)
-		go downloadComic(i, &client, indexChannel, &spawns)
-		spawned++
-		if spawned%spawnLimit == 0 {
-			spawns.Wait()
-		}
-	}
+		close(done)
+	}(indexChannel, done)
+
 	// sync for both goroutines
-	spawns.Wait()
-	close(indexChannel)
-	chillspot.Wait()
-	fmt.Println(startIndex())
+	<-done
 	fmt.Printf("took %v\n", time.Since(startTime))
-
+	// wipeFileTest()
 }
 func startIndex() int {
 	dir, err := os.UserHomeDir()
 	errNLogger(err)
-	path := dir + "/xkcd-go-comics/index.txt"
+	path := dir + "/xkcd-comics/index.txt"
 	if !fileExists(path) {
-		err := os.MkdirAll(dir+"/xkcd-go-comics", os.FileMode(0775))
+		err := os.MkdirAll(dir+"/xkcd-comics", os.FileMode(0775))
 		errNLogger(err)
 		file, err := os.Create(path)
 		errNLogger(err)
@@ -102,8 +99,7 @@ func endIndex() int {
 	return num
 }
 
-func downloadComic(x int, client *http.Client, done chan int, spawns *sync.WaitGroup) {
-	defer spawns.Done()
+func downloadComic(x int, client *http.Client, indexChannel chan int) {
 	xstr := strconv.Itoa(x)
 	url := "https://xkcd.com/" + xstr + "/info.0.json"
 	response, err := client.Get(url)
@@ -124,14 +120,12 @@ func downloadComic(x int, client *http.Client, done chan int, spawns *sync.WaitG
 	errNLogger(err)
 	imgURLs := jsonData["img"]
 	imgURL := fmt.Sprintf("%v", imgURLs)
-	// fmt.Println(imgURL)
 
 	names := jsonData["title"]
 	name := fmt.Sprintf("%v", names)
 	re := regexp.MustCompile(`(?m)\.[pjg][npi][gf]`)
 	exts := re.FindAllString(imgURL, -1)
 	if len(exts) == 0 {
-		// fmt.Println(imgURLs)
 		log.Fatal("No Matches for extension" + imgURL + strconv.Itoa(x))
 	}
 	ext := exts[0]
@@ -143,12 +137,11 @@ func downloadComic(x int, client *http.Client, done chan int, spawns *sync.WaitG
 		}
 	}
 	fmt.Println("Download complete for comic:" + name)
-	// fmt.Println(imgRes.StatusCode)
 	homedir, err := os.UserHomeDir()
 	errNLogger(err)
-	path := homedir + "/xkcd-go-comics/" + name
+	path := homedir + "/xkcd-comics/" + name
 	if fileExists(path) {
-		done <- x
+		indexChannel <- x
 	} else {
 		imgFile, err := os.Create(path)
 		errNLogger(err)
@@ -169,7 +162,7 @@ func downloadComic(x int, client *http.Client, done chan int, spawns *sync.WaitG
 		errNLogger(err)
 		imgFile.Write(imgData)
 		imgFile.Close()
-		done <- x
+		indexChannel <- x
 	}
 }
 func errNLogger(err error) {
@@ -188,7 +181,7 @@ func skipComic(num int) bool {
 		return true
 	}
 	if num == 1037 || num == 1663 {
-		fmt.Println("Skipped https://xkcd.com" + strconv.Itoa(num) + "/ the comic is not an image")
+		fmt.Println("Skipped https://xkcd.com/" + strconv.Itoa(num) + "/ the comic is not an image")
 		return true
 	}
 	if num == 472 {
@@ -210,7 +203,7 @@ func checkName(name string) bool {
 func updateSkipFile(num int) bool {
 	dir, err := os.UserHomeDir()
 	errNLogger(err)
-	path := dir + "/xkcd-go-comics/index.txt"
+	path := dir + "/xkcd-comics/index.txt"
 	file, err := os.Open(path)
 	defer file.Close()
 	errNLogger(err)
@@ -224,7 +217,6 @@ func updateSkipFile(num int) bool {
 		file, err := os.Create(path)
 		errNLogger(err)
 		file.WriteString(strconv.Itoa(num))
-		fmt.Printf("Updated skipFile to %v \n", num)
 		return true
 	}
 	return false
@@ -241,14 +233,13 @@ func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return !os.IsNotExist(err)
 }
-func offlineTest(i int, done chan int, spawns *sync.WaitGroup) {
-	defer spawns.Done()
-	done <- i
+func offlineTest(i int, indexChannel chan int) {
+	indexChannel <- i
 }
 func wipeFileTest() {
 	dir, err := os.UserHomeDir()
 	errNLogger(err)
-	path := dir + "/xkcd-go-comics/index.txt"
+	path := dir + "/xkcd-comics/index.txt"
 	file, err := os.Create(path)
 	defer file.Close()
 	file.WriteString(strconv.Itoa(1))
