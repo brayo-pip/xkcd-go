@@ -65,37 +65,37 @@ func main() {
 }
 func startIndex() int {
 	dir, err := os.UserHomeDir()
-	errNLogger(err)
+	errorLogger(err)
 	path := dir + "/xkcd-comics/index.txt"
 	if !fileExists(path) {
 		err := os.MkdirAll(dir+"/xkcd-comics", os.FileMode(0775))
-		errNLogger(err)
+		errorLogger(err)
 		file, err := os.Create(path)
-		errNLogger(err)
+		errorLogger(err)
 		file.WriteString("1")
 		file.Close()
 	}
 	file, err := os.Open(path)
-	errNLogger(err)
+	errorLogger(err)
 	scanner := bufio.NewScanner(file)
 	scanner.Scan()
 	index, err := strconv.Atoi(scanner.Text())
-	errNLogger(err)
+	errorLogger(err)
 	return index
 }
 
 func endIndex() int {
 	url := "https://xkcd.com/info.0.json"
 	response, err := http.Get(url)
-	errNLogger(err)
+	errorLogger(err)
 	resData, err := io.ReadAll(response.Body)
 	defer response.Body.Close()
 	plaintext := string(resData)
 	re, err := regexp.Compile(`(?m)"num": [\d]+`)
-	errNLogger(err)
+	errorLogger(err)
 	matches := re.FindAllString(plaintext, -1)
 	num, err := strconv.Atoi(matches[0][7:])
-	errNLogger(err)
+	errorLogger(err)
 	return num
 }
 
@@ -106,7 +106,7 @@ func downloadComic(x int, client *http.Client, indexChannel chan int) {
 	if err != nil {
 		response, err = retryResponse(url, client, 3)
 	}
-	errNLogger(err)
+	errorLogger(err)
 	if response.StatusCode != 200 {
 		fmt.Printf("response status code %v", response.StatusCode)
 		fmt.Printf("Url is %v\n", url)
@@ -115,9 +115,9 @@ func downloadComic(x int, client *http.Client, indexChannel chan int) {
 	responseData, err := io.ReadAll(response.Body)
 	var jsonData map[string]interface{}
 	err = json.Unmarshal([]byte(responseData), &jsonData)
-	errNLogger(err)
+	errorLogger(err)
 	defer response.Body.Close()
-	errNLogger(err)
+	errorLogger(err)
 	imgURLs := jsonData["img"]
 	imgURL := fmt.Sprintf("%v", imgURLs)
 
@@ -138,19 +138,19 @@ func downloadComic(x int, client *http.Client, indexChannel chan int) {
 	}
 	fmt.Println("Download complete for comic:" + name)
 	homedir, err := os.UserHomeDir()
-	errNLogger(err)
+	errorLogger(err)
 	path := homedir + "/xkcd-comics/" + name
 	if fileExists(path) {
 		indexChannel <- x
 	} else {
 		imgFile, err := os.Create(path)
-		errNLogger(err)
+		errorLogger(err)
 
 		imgRes, err := client.Get(imgURL)
 		if err != nil {
 			imgRes, err = retryResponse(imgURL, client, 3)
 		}
-		errNLogger(err)
+		errorLogger(err)
 		if imgRes.StatusCode != 200 {
 			fmt.Printf("response status code %v\n", imgRes.StatusCode)
 			fmt.Printf("url is %v\n", url)
@@ -159,13 +159,13 @@ func downloadComic(x int, client *http.Client, indexChannel chan int) {
 		}
 		imgData, err := io.ReadAll(imgRes.Body)
 		defer imgRes.Body.Close()
-		errNLogger(err)
+		errorLogger(err)
 		imgFile.Write(imgData)
 		imgFile.Close()
 		indexChannel <- x
 	}
 }
-func errNLogger(err error) {
+func errorLogger(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -202,20 +202,20 @@ func checkName(name string) bool {
 
 func updateSkipFile(num int) bool {
 	dir, err := os.UserHomeDir()
-	errNLogger(err)
+	errorLogger(err)
 	path := dir + "/xkcd-comics/index.txt"
 	file, err := os.Open(path)
 	defer file.Close()
-	errNLogger(err)
+	errorLogger(err)
 	scanner := bufio.NewScanner(file)
-	errNLogger(err)
+	errorLogger(err)
 	scanner.Scan()
 	currentIndex, err := strconv.Atoi(scanner.Text())
-	errNLogger(err)
+	errorLogger(err)
 
 	if num > currentIndex {
 		file, err := os.Create(path)
-		errNLogger(err)
+		errorLogger(err)
 		file.WriteString(strconv.Itoa(num))
 		return true
 	}
@@ -238,7 +238,7 @@ func offlineTest(i int, indexChannel chan int) {
 }
 func wipeFileTest() {
 	dir, err := os.UserHomeDir()
-	errNLogger(err)
+	errorLogger(err)
 	path := dir + "/xkcd-comics/index.txt"
 	file, err := os.Create(path)
 	defer file.Close()
