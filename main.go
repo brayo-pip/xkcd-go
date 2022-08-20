@@ -23,7 +23,7 @@ func main() {
 	}
 	// wipeFileTest()
 	startTime := time.Now()
-	indexChannel := make(chan int, 10)
+	indexChannel := make(chan int, 32+1)
 	done := make(chan int)
 
 	start := startIndex()
