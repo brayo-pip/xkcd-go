@@ -30,31 +30,24 @@ func main() {
 	end := endIndex()
 	granuality := 32
 	go func(indexChannel chan int, done chan int) {
-		if end-start > granuality {
-			for i := start; i < start+granuality; i++ {
-				go downloadComic(i, &client, indexChannel)
+		spawned := 0
+		for i := start; i <= end; i++ {
+			if skipComic(i) {
+				continue
 			}
-			for i := start + granuality; i <= end; i++ {
-				v := <-indexChannel
-				if v%32 == 0 {
-					updateSkipFile(v)
-				}
-				if skipComic(i) {
-					go offlineTest(i, indexChannel)
-					continue
-				}
-				go downloadComic(i, &client, indexChannel)
-			}
-		} else {
-			for i := start; i <= end; i++ {
-				if skipComic(i) {
-					continue
-				}
-				go downloadComic(i, &client, indexChannel)
-			}
-			updateSkipFile(end)
+			// go downloadComic(i, &client, indexChannel)
+			go offlineTest(i,indexChannel)
+			spawned++
 		}
-
+		for v := range indexChannel {
+			spawned--
+			if v%granuality == 0 {
+				updateSkipFile(v)
+			}
+			if spawned == 0 {
+				close(indexChannel)
+			}
+		}
 		close(done)
 	}(indexChannel, done)
 
