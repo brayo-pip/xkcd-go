@@ -31,6 +31,9 @@ func main() {
 	granuality := 32
 	go func(indexChannel chan int, done chan int) {
 		spawned := 0
+		if start >= end{
+			log.Fatal("malformed data input")
+		}
 		for i := start; i <= end; i++ {
 			if skipComic(i) {
 				continue
