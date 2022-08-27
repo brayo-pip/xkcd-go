@@ -24,12 +24,11 @@ func main() {
 	// wipeFileTest()
 	startTime := time.Now()
 	indexChannel := make(chan int, 32+1)
-	done := make(chan int)
 
 	start := startIndex()
 	end := endIndex()
 	granuality := 32
-	go func(indexChannel chan int, done chan int) {
+	func(indexChannel chan int) {
 		spawned := 0
 		if start >= end{
 			log.Fatal("malformed data input")
@@ -51,11 +50,8 @@ func main() {
 				close(indexChannel)
 			}
 		}
-		close(done)
-	}(indexChannel, done)
+	}(indexChannel)
 
-	// sync for both goroutines
-	<-done
 	fmt.Printf("took %v\n", time.Since(startTime))
 	// wipeFileTest()
 }
