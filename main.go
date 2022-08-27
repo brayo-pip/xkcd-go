@@ -37,8 +37,7 @@ func main() {
 			if skipComic(i) {
 				continue
 			}
-			// go downloadComic(i, &client, indexChannel)
-			go offlineTest(i,indexChannel)
+			go downloadComic(i, &client, indexChannel)
 			spawned++
 		}
 		for v := range indexChannel {
