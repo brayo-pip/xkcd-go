@@ -21,47 +21,36 @@ func main() {
 		Jar:       nil,
 		Timeout:   0,
 	}
-	// wipeFileTest()
 	startTime := time.Now()
-	indexChannel := make(chan int, 32+1)
-	done := make(chan int)
+	initStream := make(chan int, 32)
+	doneStream := make(chan int, 8)
 
 	start := startIndex()
 	end := endIndex()
 	granuality := 32
-	go func(indexChannel chan int, done chan int) {
-		if end-start > granuality {
-			for i := start; i < start+granuality; i++ {
-				go downloadComic(i, &client, indexChannel)
+
+	func(initStream, doneStream chan int) {
+		for i := start; i < end; i++ {
+			if skipComic(i) {
+				go offlineTest(i, initStream, doneStream)
+				continue
 			}
-			for i := start + granuality; i <= end; i++ {
-				v := <-indexChannel
-				if v%32 == 0 {
-					updateSkipFile(v)
-				}
-				if skipComic(i) {
-					go offlineTest(i, indexChannel)
-					continue
-				}
-				go downloadComic(i, &client, indexChannel)
-			}
-		} else {
-			for i := start; i <= end; i++ {
-				if skipComic(i) {
-					continue
-				}
-				go downloadComic(i, &client, indexChannel)
-			}
-			updateSkipFile(end)
+			go downloadComic(i, &client, initStream, doneStream)
 		}
+		done := 0
+		for v := range doneStream {
+			<-initStream
+			done++
+			if v%granuality == 0 {
+				updateSkipFile(v)
+			}
+			if done == (end - start) {
+				close(doneStream)
+			}
+		}
+	}(initStream, doneStream)
 
-		close(done)
-	}(indexChannel, done)
-
-	// sync for both goroutines
-	<-done
 	fmt.Printf("took %v\n", time.Since(startTime))
-	// wipeFileTest()
 }
 func startIndex() int {
 	dir, err := os.UserHomeDir()
@@ -99,7 +88,7 @@ func endIndex() int {
 	return num
 }
 
-func downloadComic(x int, client *http.Client, indexChannel chan int) {
+func downloadComic(x int, client *http.Client, initStream, doneStream chan int) {
 	xstr := strconv.Itoa(x)
 	url := "https://xkcd.com/" + xstr + "/info.0.json"
 	response, err := client.Get(url)
@@ -136,12 +125,12 @@ func downloadComic(x int, client *http.Client, indexChannel chan int) {
 			name = strings.Replace(name, string(v), "", -1)
 		}
 	}
-	fmt.Println("Download complete for comic:" + name)
 	homedir, err := os.UserHomeDir()
 	errorLogger(err)
 	path := homedir + "/xkcd-comics/" + name
+	initStream <- x
 	if fileExists(path) {
-		indexChannel <- x
+		doneStream <- x
 	} else {
 		imgFile, err := os.Create(path)
 		errorLogger(err)
@@ -161,8 +150,9 @@ func downloadComic(x int, client *http.Client, indexChannel chan int) {
 		defer imgRes.Body.Close()
 		errorLogger(err)
 		imgFile.Write(imgData)
+		fmt.Println("Download complete for comic:" + name)
 		imgFile.Close()
-		indexChannel <- x
+		doneStream <- x
 	}
 }
 func errorLogger(err error) {
@@ -233,8 +223,9 @@ func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return !os.IsNotExist(err)
 }
-func offlineTest(i int, indexChannel chan int) {
-	indexChannel <- i
+func offlineTest(i int, initStream, doneStream chan int) {
+	initStream <- i
+	doneStream <- i
 }
 func wipeFileTest() {
 	dir, err := os.UserHomeDir()
