@@ -22,7 +22,7 @@ func main() {
 		Timeout:   0,
 	}
 	startTime := time.Now()
-	initStream := make(chan int, 32)
+	initStream := make(chan int, 8)
 	doneStream := make(chan int, 8)
 
 	start := startIndex()
