@@ -149,6 +149,10 @@ func downloadComic(x int, client *http.Client, initStream, doneStream chan int) 
 		imgData, err := io.ReadAll(imgRes.Body)
 		defer imgRes.Body.Close()
 		errorLogger(err)
+
+		imgFile, err := os.Create(path)
+		errorLogger(err)
+
 		imgFile.Write(imgData)
 		fmt.Println("Download complete for comic:" + name)
 		imgFile.Close()
@@ -222,6 +226,15 @@ func retryResponse(url string, client *http.Client, retries int) (*http.Response
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return !os.IsNotExist(err)
+}
+func fileIsEmpty(path string) bool {
+	stat, err := os.Stat(path)
+	errorLogger(err)
+
+	if stat.Size() == 0{
+		return true
+	}
+	return false
 }
 func offlineTest(i int, initStream, doneStream chan int) {
 	initStream <- i
