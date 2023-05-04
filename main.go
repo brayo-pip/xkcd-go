@@ -52,6 +52,7 @@ func main() {
 
 	fmt.Printf("took %v\n", time.Since(startTime))
 }
+
 func startIndex() int {
 	dir, err := os.UserHomeDir()
 	errorLogger(err)
@@ -129,12 +130,9 @@ func downloadComic(x int, client *http.Client, initStream, doneStream chan int) 
 	errorLogger(err)
 	path := homedir + "/xkcd-comics/" + name
 	initStream <- x
-	if fileExists(path) {
+	if fileExists(path) && !fileIsEmpty(path) {
 		doneStream <- x
 	} else {
-		imgFile, err := os.Create(path)
-		errorLogger(err)
-
 		imgRes, err := client.Get(imgURL)
 		if err != nil {
 			imgRes, err = retryResponse(imgURL, client, 3)
@@ -159,6 +157,7 @@ func downloadComic(x int, client *http.Client, initStream, doneStream chan int) 
 		doneStream <- x
 	}
 }
+
 func errorLogger(err error) {
 	if err != nil {
 		log.Fatal(err)
@@ -184,6 +183,7 @@ func skipComic(num int) bool {
 	}
 	return false
 }
+
 func checkName(name string) bool {
 	badChars := "?\\/*<>|:\""
 	for _, char := range badChars {
@@ -215,6 +215,7 @@ func updateSkipFile(num int) bool {
 	}
 	return false
 }
+
 func retryResponse(url string, client *http.Client, retries int) (*http.Response, error) {
 	err := errors.New("Bruh")
 	var response *http.Response
@@ -223,10 +224,12 @@ func retryResponse(url string, client *http.Client, retries int) (*http.Response
 	}
 	return response, err
 }
+
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return !os.IsNotExist(err)
 }
+
 func fileIsEmpty(path string) bool {
 	stat, err := os.Stat(path)
 	errorLogger(err)
@@ -236,10 +239,12 @@ func fileIsEmpty(path string) bool {
 	}
 	return false
 }
+
 func offlineTest(i int, initStream, doneStream chan int) {
 	initStream <- i
 	doneStream <- i
 }
+
 func wipeFileTest() {
 	dir, err := os.UserHomeDir()
 	errorLogger(err)
