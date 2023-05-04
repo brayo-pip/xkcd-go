@@ -231,7 +231,7 @@ func fileIsEmpty(path string) bool {
 	stat, err := os.Stat(path)
 	errorLogger(err)
 
-	if stat.Size() == 0{
+	if stat.Size() == 0 {
 		return true
 	}
 	return false
